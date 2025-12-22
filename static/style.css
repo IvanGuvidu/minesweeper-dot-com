@@ -1,0 +1,140 @@
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+
+.game-over {
+    display: none;
+    font-size: 48px;
+    color: red;
+    font-weight: bold;
+    margin-top: 30px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+
+h1 {
+    color: #000;
+    text-shadow: 1px 1px 0 white;
+    margin-bottom: 30px;
+}
+
+.controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.restart {
+    margin-top: 24px;
+    padding: 10px 18px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #000;
+    background: linear-gradient(180deg, #f0f0f0 0%, #dcdcdc 100%);
+    border: 2px solid;
+    border-color: #ffffff #808080 #808080 #ffffff;
+    box-shadow: 1px 1px 0 #dfdfdf, -1px -1px 0 #ffffff;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.restart:hover {
+    transform: translateY(-1px);
+    box-shadow: 2px 2px 0 #dfdfdf, -2px -2px 0 #ffffff;
+}
+
+.restart:active {
+    transform: translateY(1px);
+    border-color: #808080 #dfdfdf #dfdfdf #808080;
+    box-shadow: inset 1px 1px 0 #808080;
+}
+
+.hint {
+    padding: 10px 18px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #0b3d91;
+    background: linear-gradient(180deg, #e8f3ff 0%, #c7ddff 100%);
+    border: 2px solid;
+    border-color: #ffffff #5a8ad9 #5a8ad9 #ffffff;
+    box-shadow: 1px 1px 0 #dfdfdf, -1px -1px 0 #ffffff;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.hint:hover {
+    transform: translateY(-1px);
+    box-shadow: 2px 2px 0 #dfdfdf, -2px -2px 0 #ffffff;
+}
+
+.hint:active {
+    transform: translateY(1px);
+    border-color: #5a8ad9 #dfdfdf #dfdfdf #5a8ad9;
+    box-shadow: inset 1px 1px 0 #5a8ad9;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), 40px);
+    gap: 2px;
+    width: fit-content;
+    background-color: #c0c0c0;
+    padding: 5px;
+    border: 3px solid;
+    border-color: white #808080 #808080 white;
+    box-shadow: 1px 1px 0 #dfdfdf, -1px -1px 0 #ffffff;
+}
+
+.cell {
+    width: 40px;
+    height: 40px;
+    border: 2px solid;
+    border-color: #dfdfdf #808080 #808080 #dfdfdf;
+    background-color: #c0c0c0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+    user-select: none;
+    transition: all 0.1s;
+}
+
+.cell:hover {
+    border-color: #ffffff #606060 #606060 #ffffff;
+}
+
+.cell:active {
+    border-color: #808080 #dfdfdf #dfdfdf #808080;
+    box-shadow: inset 1px 1px 0 #808080;
+}
+
+.cell.revealed {
+    border-color: #808080 #dfdfdf #dfdfdf #808080;
+    background-color: #c0c0c0;
+    cursor: default;
+}
+
+.cell.revealed:hover {
+    border-color: #dfdfdf #808080 #808080 #dfdfdf;
+}
+
+/* Color coding for adjacent mines */
+.cell.revealed[data-mines="1"] { color: blue; }
+.cell.revealed[data-mines="2"] { color: green; }
+.cell.revealed[data-mines="3"] { color: red; }
+.cell.revealed[data-mines="4"] { color: darkblue; }
+.cell.revealed[data-mines="5"] { color: darkred; }
+.cell.revealed[data-mines="6"] { color: darkcyan; }
+.cell.revealed[data-mines="7"] { color: black; }
+.cell.revealed[data-mines="8"] { color: gray; }

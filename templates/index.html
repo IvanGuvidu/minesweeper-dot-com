@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample HTML Page</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body>
+    <h1 id="title">MineSweeper</h1>
+    <div id="gameOverMessage" class="game-over">GAME OVER!</div>
+    <div class="grid" style="--cols: {{m}};">
+        {% for i in range(n) %} 
+            {% for j in range(m) %}
+                <div class="cell" onClick="revealCell(this, {{i}}, {{j}})"></div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+    <div class="controls">
+        <button class="hint" onClick="restartGame()">Restart Game</button>
+        <button class="hint">Hint</button>
+    </div>
+    <script>
+        async function revealCell(cell, row, col) {
+            console.log("Cell clicked at row: " + row + ", col: " + col);
+            const response = await fetch('/reveal', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ row: row, col: col })
+            });
+            const data = await response.json();
+            console.log(data);
+            if (data.mine) {
+                cell.style.backgroundColor = 'red';
+                document.getElementById('gameOverMessage').style.display = 'block';
+            } else {
+                cell.classList.add('revealed');
+                cell.innerText = data.adjacentMines > 0 ? data.adjacentMines : '';
+            }
+        }
+        async function restartGame() {
+            const response = await fetch('/restart', {
+                method: 'POST'
+            });
+            const data = await response.json();
+            if (data.success === true) 
+                location.reload();
+        }
+    </script>
+</body>
+
+</html>
