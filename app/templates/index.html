@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sample HTML Page</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"></head>
 <body>
     <h1 id="title">MineSweeper</h1>
     <div id="gameOverMessage" class="game-over">GAME OVER!</div>
+    <div id="victoryMessage" class="game-over" style="color: green">YOU WIN!</div>
     <div class="grid" style="--cols: {{m}};">
         {% for i in range(n) %} 
             {% for j in range(m) %}
@@ -35,8 +36,24 @@
                 cell.style.backgroundColor = 'red';
                 document.getElementById('gameOverMessage').style.display = 'block';
             } else {
-                cell.classList.add('revealed');
-                cell.innerText = data.adjacentMines > 0 ? data.adjacentMines : '';
+                const cells =  document.querySelectorAll('.cell');
+                const cols = {{m}};
+                data.revealed.forEach(cellData => {
+                    const index = cellData.row * cols + cellData.col;
+                    const targetCell = cells[index];
+
+                    if (targetCell && !targetCell.classList.contains('revealed')) {
+                        targetCell.classList.add('revealed');
+                        if (cellData.value > 0) {
+                            targetCell.innerText = cellData.value;
+                            targetCell.setAttribute('data-mines', cellData.value);
+                        }
+                    }
+                })
+            }
+
+            if (data.victory === true) {
+                document.getElementById('victoryMessage').style.display = 'block';
             }
         }
         async function restartGame() {

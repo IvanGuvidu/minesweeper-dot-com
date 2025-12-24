@@ -28,12 +28,25 @@ def reveal():
         )
         session['board'] = board
         session['first_move'] = False
+        session['revealed_cells'] = []
     else:
         board = session.get('board')
     
     cell_val = board[row][col]
     if cell_val == 'M':
-        return jsonify({'mine': True, 'adjacentMines': 0, 'revealed': []})
+        return jsonify({'mine': True, 'adjacentMines': 0, 'revealed': [], 'victory': False})
     else:
         revealed = list(reveal_cells(board, row, col))
-        return jsonify({'mine': False, 'adjacentMines': cell_val, 'revealed': revealed})
+        revealed_json = [{'row': r, 'col': c, 'value': board[r][c]} for r, c in revealed]
+
+        revealed_cells = set(session.get('revealed_cells', []))
+        revealed_cells.update([(r, c) for r, c in revealed])
+        session['revealed_cells'] = list(revealed_cells)
+
+        total_cells = len(board) * len(board[0])
+        total_mines = sum(1 for row in board for cell in row if cell == 'M')
+        safe_cells = total_cells - total_mines
+
+        victory = len(revealed_cells) >= safe_cells
+
+        return jsonify({'mine': False, 'adjacentMines': cell_val, 'revealed': revealed_json, 'victory': victory})
