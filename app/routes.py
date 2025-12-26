@@ -1,9 +1,10 @@
 from flask import current_app, jsonify, request, render_template, session
 from .board.board_generation import generate_mines
-from .board.board_reveal import reveal_cells
+from .board.board_reveal import check_victory, reveal_cells, reveal_cell_hint
 
 @current_app.route('/')
 def home():
+    session.clear()
     return render_template('index.html', n = 10, m = 10)
 
 @current_app.route('/restart', methods=['POST'])
@@ -43,10 +44,25 @@ def reveal():
         revealed_cells.update([(r, c) for r, c in revealed])
         session['revealed_cells'] = list(revealed_cells)
 
-        total_cells = len(board) * len(board[0])
-        total_mines = sum(1 for row in board for cell in row if cell == 'M')
-        safe_cells = total_cells - total_mines
-
-        victory = len(revealed_cells) >= safe_cells
+        victory = check_victory(board, revealed_cells)
 
         return jsonify({'mine': False, 'adjacentMines': cell_val, 'revealed': revealed_json, 'victory': victory})
+
+@current_app.route('/hint_cell', methods=['POST'])
+def hint_cell():
+    board = session.get('board')
+    revealed = set(tuple(cell) for cell in session.get('revealed_cells', []))
+
+    hint_cell = reveal_cell_hint(board, revealed)
+    if hint_cell:
+        x, y = hint_cell
+        revealed_cells = session.get('revealed_cells', [])
+        if (x, y) not in revealed:
+            revealed_cells.append((x, y))
+            session['revealed_cells'] = revealed_cells
+
+            victory = check_victory(board, set(revealed_cells))
+
+        return jsonify({'row': x, 'col': y, 'value': board[x][y], 'victory': victory})
+    else:
+        return jsonify({'row': -1, 'col': -1, 'value': -1, 'victory': False})

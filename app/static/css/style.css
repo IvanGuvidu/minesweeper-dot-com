@@ -125,6 +125,10 @@ h1 {
     cursor: default;
 }
 
+.cell.revealed.hinted {
+    background-color: #fff4b3;
+}
+
 .cell.revealed:hover {
     border-color: #dfdfdf #808080 #808080 #dfdfdf;
 }

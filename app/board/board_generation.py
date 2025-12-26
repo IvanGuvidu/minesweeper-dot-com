@@ -6,33 +6,33 @@ def generate_mines(rows = 10, cols = 10, mines = 15, first_row=None, first_col=N
     if first_row is not None and first_col is not None:
         for dx in [-1, 0, 1]:
             for dy in [-1, 0, 1]:
-                nr, nc = first_row + dx, first_col + dy
-                if 0 <= nr < rows and 0 <= nc < cols:
-                    forbidden.add((nr, nc))
+                nx, ny = first_row + dx, first_col + dy
+                if 0 <= nx < rows and 0 <= ny < cols:
+                    forbidden.add((nx, ny))
     
     while len(mines_positions) < mines:
-        r = random.randint(0, rows - 1)
-        c = random.randint(0, cols - 1)
-        if (r, c) in mines_positions or (r, c) in forbidden:
+        i = random.randint(0, rows - 1)
+        j = random.randint(0, cols - 1)
+        if (i, j) in mines_positions or (i, j) in forbidden:
             continue
-        forbidden.add((r, c))
-        mines_positions.add((r, c))
+        forbidden.add((i, j))
+        mines_positions.add((i, j))
 
     board = [[0 for _ in range(cols)] for _ in range(rows)]
-    for r, c in mines_positions:
-        board[r][c] = 'M'
+    for x, y in mines_positions:
+        board[x][y] = 'M'
 
-    for r in range(rows):
-        for c in range(cols):
-            if board[r][c] != 'M':
+    for i in range(rows):
+        for j in range(cols):
+            if board[i][j] != 'M':
                 count = 0
                 for dx in [-1, 0, 1]:
                     for dy in [-1, 0, 1]:
                         if dx == 0 and dy == 0:
                             continue
-                        nr, nc = r + dx, c + dy
-                        if 0 <= nr < rows and 0 <= nc < cols:
-                            if board[nr][nc] == 'M':
+                        nx, ny = i + dx, j + dy
+                        if 0 <= nx < rows and 0 <= ny < cols:
+                            if board[nx][ny] == 'M':
                                 count += 1
-                board[r][c] = count
+                board[i][j] = count
     return board

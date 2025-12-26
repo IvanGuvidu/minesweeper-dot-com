@@ -18,7 +18,7 @@
     </div>
     <div class="controls">
         <button class="hint" onClick="restartGame()">Restart Game</button>
-        <button class="hint">Hint</button>
+        <button class="hint" onClick="getCellHint()">Hint</button>
     </div>
     <script>
         async function revealCell(cell, row, col) {
@@ -56,6 +56,7 @@
                 document.getElementById('victoryMessage').style.display = 'block';
             }
         }
+
         async function restartGame() {
             const response = await fetch('/restart', {
                 method: 'POST'
@@ -63,6 +64,36 @@
             const data = await response.json();
             if (data.success === true) 
                 location.reload();
+        }
+
+        async function getCellHint() {
+            console.log("Hint requested");
+            const response = await fetch('/hint_cell', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            })
+            const data = await response.json();
+            console.log(data);
+            if (data.row >= 0 && data.col >= 0) {
+                const cells =  document.querySelectorAll('.cell');
+                const cols = {{m}};
+                const index = data.row * cols + data.col;
+                const targetCell = cells[index];
+                if (targetCell && !targetCell.classList.contains('revealed')) {
+                    targetCell.classList.add('revealed', 'hinted');
+                    if (data.value > 0) {
+                        targetCell.innerText = data.value;
+                        targetCell.setAttribute('data-mines', data.value);
+                    }
+                }
+            }
+
+            if (data.victory === true) {
+                document.getElementById('victoryMessage').style.display = 'block';
+            }
         }
     </script>
 </body>
