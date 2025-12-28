@@ -88,6 +88,10 @@ h1 {
     transform: none;
 }
 
+.cell.revealed.hinted {
+    background-color: #fff4b3;
+}
+
 .cell.revealed:hover {
     background-color: #e8f5e9; /* No hover effect on revealed cells */
     transform: none;

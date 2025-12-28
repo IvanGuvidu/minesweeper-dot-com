@@ -1,3 +1,12 @@
+from flask import current_app, jsonify, request, render_template, session
+from .minesweeper.board_generation import generate_mines
+from .minesweeper.board_reveal import check_victory, reveal_cells
+from .minesweeper.solver import MinesweeperSolver
+
+@current_app.route('/')
+def home():
+    session.clear()
+    return render_template('index.html', n = 10, m = 10)
 from flask import current_app, jsonify, request, render_template, session, redirect, url_for
 from .board.board_generation import generate_mines
 from .board.board_reveal import reveal_cells
@@ -87,12 +96,45 @@ def reveal():
         revealed_cells.update([(r, c) for r, c in revealed])
         session['revealed_cells'] = list(revealed_cells)
 
-        total_cells = len(board) * len(board[0])
-        total_mines = sum(1 for row in board for cell in row if cell == 'M')
-        safe_cells = total_cells - total_mines
+        victory = check_victory(board, revealed_cells)
 
-        victory = len(revealed_cells) >= safe_cells
+        return jsonify({'mine': False, 'adjacentMines': cell_val, 'revealed': revealed_json, 'victory': victory})
 
+@current_app.route('/hint_cell', methods=['POST'])
+def hint_cell():
+    board = session.get('board')
+    revealed = set(tuple(cell) for cell in session.get('revealed_cells', []))
+
+    solver_board = []
+    for i in range(len(board)):
+        row = []
+        for j in range(len(board[0])):
+            if (i, j) in revealed:
+                row.append(str(board[i][j]))
+            else:
+                row.append('.')
+        solver_board.append(row)
+
+    solver = MinesweeperSolver(solver_board)
+    best_move = solver.get_best_move()
+
+    if best_move:
+        x, y = best_move['x'], best_move['y']
+        revealed_cells = session.get('revealed_cells', [])
+        action = best_move['action']
+
+        if action == 'click' and (x, y) not in revealed:
+            revealed_cells.append((x, y))
+            session['revealed_cells'] = revealed_cells
+        
+        if action == 'flag':
+            return jsonify({'row': -1, 'col': -1, 'value': -1, 'victory': False})
+
+        victory = check_victory(board, set(revealed_cells))
+
+        return jsonify({'row': x, 'col': y, 'value': board[x][y], 'victory': victory})
+    else:
+        return jsonify({'row': -1, 'col': -1, 'value': -1, 'victory': False})
         return jsonify({'mine': False, 'adjacentMines': cell_val, 'revealed': revealed_json, 'victory': victory})
 
 @current_app.route('/tic-tac-toe/move', methods=['POST'])
