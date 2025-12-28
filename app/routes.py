@@ -1,15 +1,7 @@
-from flask import current_app, jsonify, request, render_template, session
+from flask import current_app, jsonify, request, render_template, session, redirect, url_for
 from .minesweeper.board_generation import generate_mines
 from .minesweeper.board_reveal import check_victory, reveal_cells
 from .minesweeper.solver import MinesweeperSolver
-
-@current_app.route('/')
-def home():
-    session.clear()
-    return render_template('index.html', n = 10, m = 10)
-from flask import current_app, jsonify, request, render_template, session, redirect, url_for
-from .board.board_generation import generate_mines
-from .board.board_reveal import reveal_cells
 from .games import tic_tac_toe as ttt
 
 @current_app.route('/')
@@ -20,6 +12,8 @@ def home():
 
 @current_app.route('/minesweeper')
 def minesweeper():
+    session['board'] = None
+    session['first_move'] = True
     if not session.get('logged_in'):
         return render_template('login.html')
     return render_template('index.html', n=10, m=10)
@@ -63,6 +57,7 @@ def logout():
 def restart_game():
     session['board'] = None
     session['first_move'] = True
+    session['flagged_cells'] = []
     return jsonify({"success": True})
 
 @current_app.route('/reveal', methods=['POST'])
@@ -81,6 +76,7 @@ def reveal():
         )
         session['board'] = board
         session['first_move'] = False
+        session['flagged_cells'] = []
         session['revealed_cells'] = []
     else:
         board = session.get('board')
@@ -99,11 +95,35 @@ def reveal():
         victory = check_victory(board, revealed_cells)
 
         return jsonify({'mine': False, 'adjacentMines': cell_val, 'revealed': revealed_json, 'victory': victory})
+@current_app.route('/flag', methods=['POST'])
+def flag():
+    data = request.get_json()
+    x = data['row']
+    y = data['col']
+    
+    flagged_cells = session.get('flagged_cells', [])
+    cell_tuple = (x, y)
+    
+    if cell_tuple in flagged_cells:
+        flagged_cells.remove(cell_tuple)
+        action = 'removed'
+    else:
+        flagged_cells.append(cell_tuple)
+        action = 'added'
+    
+    session['flagged_cells'] = flagged_cells
+    
+    return jsonify({
+        'success': True,
+        'action': action,
+        'flagged': len(flagged_cells)
+    })
 
 @current_app.route('/hint_cell', methods=['POST'])
 def hint_cell():
     board = session.get('board')
     revealed = set(tuple(cell) for cell in session.get('revealed_cells', []))
+    flags = set(tuple(cell) for cell in session.get('flagged_cells', []))
 
     solver_board = []
     for i in range(len(board)):
@@ -111,6 +131,8 @@ def hint_cell():
         for j in range(len(board[0])):
             if (i, j) in revealed:
                 row.append(str(board[i][j]))
+            elif (i, j) in flags:
+                row.append('F')
             else:
                 row.append('.')
         solver_board.append(row)
@@ -126,16 +148,24 @@ def hint_cell():
         if action == 'click' and (x, y) not in revealed:
             revealed_cells.append((x, y))
             session['revealed_cells'] = revealed_cells
+            
+            if board[x][y] == 'M':
+                return jsonify({'row': -1, 'col': -1, 'value': -1, 'victory': False, 'action': action})
+            
+            victory = check_victory(board, set(revealed_cells))
+            
+            return jsonify({'row': x, 'col': y, 'value': board[x][y], 'victory': victory, 'action': action})
         
         if action == 'flag':
-            return jsonify({'row': -1, 'col': -1, 'value': -1, 'victory': False})
+            flagged_cells = session.get('flagged_cells', [])
+            if (x, y) not in flagged_cells:
+                flagged_cells.append((x, y))
+                session['flagged_cells'] = flagged_cells
+            return jsonify({'row': x, 'col': y, 'value': -1, 'victory': False, 'action': action})
 
-        victory = check_victory(board, set(revealed_cells))
-
-        return jsonify({'row': x, 'col': y, 'value': board[x][y], 'victory': victory})
+        return jsonify({'row': -1, 'col': -1, 'value': -1, 'victory': False, 'action': 'none'})
     else:
         return jsonify({'row': -1, 'col': -1, 'value': -1, 'victory': False})
-        return jsonify({'mine': False, 'adjacentMines': cell_val, 'revealed': revealed_json, 'victory': victory})
 
 @current_app.route('/tic-tac-toe/move', methods=['POST'])
 def tic_tac_toe_move():

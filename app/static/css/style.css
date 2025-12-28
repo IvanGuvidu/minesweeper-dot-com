@@ -88,8 +88,18 @@ h1 {
     transform: none;
 }
 
-.cell.revealed.hinted {
+.cell.revealed.hintedCell {
     background-color: #fff4b3;
+}
+
+.cell.revealed.hintedFlag {
+    background: repeating-linear-gradient(
+        45deg,
+        #ffeb3b,
+        #ffeb3b 5px,
+        #000 5px,
+        #000 10px
+    );
 }
 
 .cell.revealed:hover {

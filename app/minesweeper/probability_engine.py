@@ -46,8 +46,8 @@ class ProbabilityEngine:
 
                 val_num = int(val)
                 neighbors = self.get_neighbors(i, j)
-                hidden = [vecin for vecin in neighbors if vecin[1] == '.']
-                flags = [vecin for vecin in neighbors if vecin[1] == 'F']
+                hidden = [vecin[0] for vecin in neighbors if vecin[1] == '.']
+                flags = [vecin[0] for vecin in neighbors if vecin[1] == 'F']
 
                 if hidden:
                     remaining_mines = val_num - len(flags)

@@ -12,7 +12,7 @@ class MinesweeperSolver:
         simple_move = self.find_simple_move()
         if simple_move:
             return simple_move
-        return self.find_probabilistic_move()
+        return self.calc_probabilities()
     
     def get_neighbors(self, x, y):
         neighbors = []
