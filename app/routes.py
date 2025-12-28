@@ -1,6 +1,7 @@
 from flask import current_app, jsonify, request, render_template, session
-from .board.board_generation import generate_mines
-from .board.board_reveal import check_victory, reveal_cells, reveal_cell_hint
+from .minesweeper.board_generation import generate_mines
+from .minesweeper.board_reveal import check_victory, reveal_cells
+from .minesweeper.solver import MinesweeperSolver
 
 @current_app.route('/')
 def home():
@@ -53,15 +54,32 @@ def hint_cell():
     board = session.get('board')
     revealed = set(tuple(cell) for cell in session.get('revealed_cells', []))
 
-    hint_cell = reveal_cell_hint(board, revealed)
-    if hint_cell:
-        x, y = hint_cell
+    solver_board = []
+    for i in range(len(board)):
+        row = []
+        for j in range(len(board[0])):
+            if (i, j) in revealed:
+                row.append(str(board[i][j]))
+            else:
+                row.append('.')
+        solver_board.append(row)
+
+    solver = MinesweeperSolver(solver_board)
+    best_move = solver.get_best_move()
+
+    if best_move:
+        x, y = best_move['x'], best_move['y']
         revealed_cells = session.get('revealed_cells', [])
-        if (x, y) not in revealed:
+        action = best_move['action']
+
+        if action == 'click' and (x, y) not in revealed:
             revealed_cells.append((x, y))
             session['revealed_cells'] = revealed_cells
+        
+        if action == 'flag':
+            return jsonify({'row': -1, 'col': -1, 'value': -1, 'victory': False})
 
-            victory = check_victory(board, set(revealed_cells))
+        victory = check_victory(board, set(revealed_cells))
 
         return jsonify({'row': x, 'col': y, 'value': board[x][y], 'victory': victory})
     else:
