@@ -2,12 +2,28 @@ from flask import current_app, jsonify, request, render_template, session, redir
 from .minesweeper.board_generation import generate_mines
 from .minesweeper.board_reveal import check_victory, reveal_cells
 from .minesweeper.solver import MinesweeperSolver
+from .board.board_generation import generate_mines
+from .board.board_reveal import check_victory, reveal_cells, reveal_cell_hint
 from .games import tic_tac_toe as ttt
+from .games import snake as snake_game
 
 @current_app.route('/')
 def home():
     if not session.get('logged_in'):
         return render_template('login.html')
+    # If not logged in, show login page
+    if not session.get('logged_in'):
+        return render_template('login.html')
+    
+    # Reset all game states when returning to home
+    session['board'] = None
+    session['first_move'] = True
+    session['revealed_cells'] = []
+    session['ttt_board'] = None
+    session['ttt_current_player'] = 'X'
+    session['snake_game'] = None
+    
+    # Show the game selection home page
     return render_template('home.html')
 
 @current_app.route('/minesweeper')
@@ -16,18 +32,35 @@ def minesweeper():
     session['first_move'] = True
     if not session.get('logged_in'):
         return render_template('login.html')
+    if not session.get('logged_in'):
+        return render_template('login.html')
+    
+    # Reset minesweeper game state when entering the game
+    session['board'] = None
+    session['first_move'] = True
+    session['revealed_cells'] = []
+    
     return render_template('index.html', n=10, m=10)
 
 @current_app.route('/snake')
 def snake():
     if not session.get('logged_in'):
         return render_template('login.html')
+    
+    # Reset snake game state when entering the game
+    session['snake_game'] = None
+    
     return render_template('snake.html')
 
 @current_app.route('/tic-tac-toe')
 def tic_tac_toe():
     if not session.get('logged_in'):
         return render_template('login.html')
+    
+    # Reset tic-tac-toe game state when entering the game
+    session['ttt_board'] = None
+    session['ttt_current_player'] = 'X'
+    
     return render_template('tic_tac_toe.html')
 
 @current_app.route('/login', methods=['GET', 'POST'])
@@ -36,6 +69,11 @@ def login():
         return redirect(url_for('home'))
 
     if request.method == 'POST':
+        username = request.form.get('username')
+        session['logged_in'] = True
+        session['username'] = username or 'Player'
+
+        # Minimal login: accept any credentials and mark session
         username = request.form.get('username')
         session['logged_in'] = True
         session['username'] = username or 'Player'
@@ -59,6 +97,33 @@ def restart_game():
     session['first_move'] = True
     session['flagged_cells'] = []
     return jsonify({"success": True})
+
+@current_app.route('/hint_cell', methods=['POST'])
+def hint_cell():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    board = session.get('board')
+    if not board:
+        return jsonify({'row': -1, 'col': -1, 'value': -1, 'victory': False})
+    
+    revealed_cells = set(session.get('revealed_cells', []))
+    hint_result = reveal_cell_hint(board, revealed_cells)
+    
+    if hint_result:
+        row, col = hint_result
+        cell_value = board[row][col]
+        
+        # Add to revealed cells
+        revealed_cells.add((row, col))
+        session['revealed_cells'] = list(revealed_cells)
+        
+        # Check for victory
+        victory = check_victory(board, revealed_cells)
+        
+        return jsonify({'row': row, 'col': col, 'value': cell_value, 'victory': victory})
+    else:
+        return jsonify({'row': -1, 'col': -1, 'value': -1, 'victory': False})
 
 @current_app.route('/reveal', methods=['POST'])
 def reveal():
@@ -119,54 +184,6 @@ def flag():
         'flagged': len(flagged_cells)
     })
 
-@current_app.route('/hint_cell', methods=['POST'])
-def hint_cell():
-    board = session.get('board')
-    revealed = set(tuple(cell) for cell in session.get('revealed_cells', []))
-    flags = set(tuple(cell) for cell in session.get('flagged_cells', []))
-
-    solver_board = []
-    for i in range(len(board)):
-        row = []
-        for j in range(len(board[0])):
-            if (i, j) in revealed:
-                row.append(str(board[i][j]))
-            elif (i, j) in flags:
-                row.append('F')
-            else:
-                row.append('.')
-        solver_board.append(row)
-
-    solver = MinesweeperSolver(solver_board)
-    best_move = solver.get_best_move()
-
-    if best_move:
-        x, y = best_move['x'], best_move['y']
-        revealed_cells = session.get('revealed_cells', [])
-        action = best_move['action']
-
-        if action == 'click' and (x, y) not in revealed:
-            revealed_cells.append((x, y))
-            session['revealed_cells'] = revealed_cells
-            
-            if board[x][y] == 'M':
-                return jsonify({'row': -1, 'col': -1, 'value': -1, 'victory': False, 'action': action})
-            
-            victory = check_victory(board, set(revealed_cells))
-            
-            return jsonify({'row': x, 'col': y, 'value': board[x][y], 'victory': victory, 'action': action})
-        
-        if action == 'flag':
-            flagged_cells = session.get('flagged_cells', [])
-            if (x, y) not in flagged_cells:
-                flagged_cells.append((x, y))
-                session['flagged_cells'] = flagged_cells
-            return jsonify({'row': x, 'col': y, 'value': -1, 'victory': False, 'action': action})
-
-        return jsonify({'row': -1, 'col': -1, 'value': -1, 'victory': False, 'action': 'none'})
-    else:
-        return jsonify({'row': -1, 'col': -1, 'value': -1, 'victory': False})
-
 @current_app.route('/tic-tac-toe/move', methods=['POST'])
 def tic_tac_toe_move():
     if not session.get('logged_in'):
@@ -176,7 +193,16 @@ def tic_tac_toe_move():
     row = data['row']
     col = data['col']
     
+<<<<<<< HEAD
     if 'ttt_board' not in session:
+=======
+<<<<<<< HEAD
+>>>>>>> ca5380d (ce fac aici)
+    # Initialize board if not exists or is None
+    if 'ttt_board' not in session or session['ttt_board'] is None:
+=======
+    if 'ttt_board' not in session:
+>>>>>>> dd357ef (remove comm)
         session['ttt_board'] = ttt.create_board()
         session['ttt_current_player'] = 'X'
     
@@ -218,3 +244,48 @@ def tic_tac_toe_restart():
     session['ttt_current_player'] = 'X'
     
     return jsonify({'success': True, 'currentPlayer': 'X'})
+
+@current_app.route('/snake/init', methods=['POST'])
+def snake_init():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    game = snake_game.create_game(rows=20, cols=20)
+    session['snake_game'] = game
+    
+    return jsonify(snake_game.get_game_state(game))
+
+@current_app.route('/snake/move', methods=['POST'])
+def snake_move():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    data = request.get_json()
+    direction = data.get('direction')
+    
+    # Initialize game if not exists
+    if 'snake_game' not in session or session['snake_game'] is None:
+        game = snake_game.create_game(rows=20, cols=20)
+        session['snake_game'] = game
+    else:
+        game = session['snake_game']
+    
+    # Change direction if provided
+    if direction:
+        snake_game.change_direction(game, direction)
+    
+    # Move snake
+    game = snake_game.move_snake(game)
+    session['snake_game'] = game
+    
+    return jsonify(snake_game.get_game_state(game))
+
+@current_app.route('/snake/restart', methods=['POST'])
+def snake_restart():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    game = snake_game.create_game(rows=20, cols=20)
+    session['snake_game'] = game
+    
+    return jsonify(snake_game.get_game_state(game))
