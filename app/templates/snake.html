@@ -5,6 +5,77 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Snake</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <style>
+        #snake-canvas {
+            border: 3px solid #2d5016;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            display: block;
+        }
+        
+        .snake-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        .score-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2d5016;
+            text-align: center;
+            margin: 15px 0;
+        }
+        
+        .game-status {
+            font-size: 18px;
+            color: #d32f2f;
+            text-align: center;
+            margin: 10px 0;
+            min-height: 30px;
+        }
+        
+        .arrow-keys {
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            gap: 5px;
+            justify-content: center;
+            margin: 20px auto;
+        }
+        
+        .arrow-key {
+            width: 60px;
+            height: 60px;
+            background: rgba(45, 80, 22, 0.8);
+            color: white;
+            border: 2px solid #2d5016;
+            border-radius: 8px;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .arrow-key:hover {
+            background: #2d5016;
+            transform: scale(1.05);
+        }
+        
+        .arrow-key:active {
+            transform: scale(0.95);
+        }
+        
+        .arrow-up { grid-column: 2; grid-row: 1; }
+        .arrow-left { grid-column: 1; grid-row: 2; }
+        .arrow-down { grid-column: 2; grid-row: 2; }
+        .arrow-right { grid-column: 3; grid-row: 2; }
+    </style>
 </head>
 <body>
     <div class="bg-grid"></div>
@@ -13,8 +84,224 @@
     <div class="doodle doodle-3">○</div>
 
     <div class="game-container">
-        <h1 id="title">Snake</h1>
-        <p style="text-align:center; color:#2d5016;">Coming soon. Back to <a href="/">Home</a>.</p>
+        <h1 id="title">Snake 🐍</h1>
+        
+        <div class="score-display">
+            Score: <span id="score">0</span>
+        </div>
+        
+        <div class="game-status" id="status"></div>
+        
+        <canvas id="snake-canvas" width="600" height="600"></canvas>
+        
+        <div class="snake-controls">
+            <button class="btn" onclick="startGame()">Start Game</button>
+            <button class="btn" onclick="restartGame()">Restart</button>
+            <button class="btn" onclick="window.location.href='/'">Home</button>
+            <button class="btn logout-btn" onclick="window.location.href='/logout'">Logout</button>
+        </div>
+        
+        <div class="arrow-keys">
+            <button class="arrow-key arrow-up" onclick="changeDirection('up')">▲</button>
+            <button class="arrow-key arrow-left" onclick="changeDirection('left')">◄</button>
+            <button class="arrow-key arrow-down" onclick="changeDirection('down')">▼</button>
+            <button class="arrow-key arrow-right" onclick="changeDirection('right')">►</button>
+        </div>
+        
+        <p style="text-align: center; color: #5a7c3e; margin-top: 15px;">
+            Use arrow keys or buttons to control the snake
+        </p>
     </div>
+
+    <script>
+        const canvas = document.getElementById('snake-canvas');
+        const ctx = canvas.getContext('2d');
+        const cellSize = 30;
+        const rows = 20;
+        const cols = 20;
+        
+        let gameState = null;
+        let gameInterval = null;
+        let pendingDirection = null;
+        
+        // Initialize game
+        async function startGame() {
+            try {
+                const response = await fetch('/snake/init', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                gameState = await response.json();
+                document.getElementById('status').textContent = '';
+                
+                // Clear any existing interval
+                if (gameInterval) {
+                    clearInterval(gameInterval);
+                }
+                
+                // Start game loop
+                gameInterval = setInterval(gameLoop, 150);
+                drawGame();
+            } catch (error) {
+                console.error('Error starting game:', error);
+            }
+        }
+        
+        async function gameLoop() {
+            if (!gameState || gameState.gameOver) {
+                if (gameInterval) {
+                    clearInterval(gameInterval);
+                    gameInterval = null;
+                }
+                return;
+            }
+            
+            try {
+                const response = await fetch('/snake/move', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({direction: pendingDirection})
+                });
+                
+                gameState = await response.json();
+                pendingDirection = null;
+                drawGame();
+                
+                if (gameState.gameOver) {
+                    clearInterval(gameInterval);
+                    gameInterval = null;
+                    document.getElementById('status').textContent = '💀 Game Over! Click Restart to play again.';
+                }
+            } catch (error) {
+                console.error('Error in game loop:', error);
+            }
+        }
+        
+        function changeDirection(direction) {
+            if (gameState && !gameState.gameOver) {
+                pendingDirection = direction;
+            }
+        }
+        
+        function drawGame() {
+            if (!gameState) return;
+            
+            // Clear canvas
+            ctx.fillStyle = '#f0f4e8';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid lines
+            ctx.strokeStyle = '#e0e8d8';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= rows; i++) {
+                ctx.beginPath();
+                ctx.moveTo(0, i * cellSize);
+                ctx.lineTo(canvas.width, i * cellSize);
+                ctx.stroke();
+            }
+            for (let i = 0; i <= cols; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * cellSize, 0);
+                ctx.lineTo(i * cellSize, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Draw food
+            const [foodRow, foodCol] = gameState.food;
+            ctx.fillStyle = '#d32f2f';
+            ctx.beginPath();
+            ctx.arc(
+                foodCol * cellSize + cellSize / 2,
+                foodRow * cellSize + cellSize / 2,
+                cellSize / 2 - 3,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // Draw snake
+            gameState.snake.forEach((segment, index) => {
+                const [row, col] = segment;
+                const x = col * cellSize;
+                const y = row * cellSize;
+                
+                if (index === 0) {
+                    // Snake head
+                    ctx.fillStyle = '#2d5016';
+                } else {
+                    // Snake body
+                    ctx.fillStyle = '#5a7c3e';
+                }
+                
+                ctx.fillRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+                ctx.strokeStyle = '#1a3010';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x + 2, y + 2, cellSize - 4, cellSize - 4);
+            });
+            
+            // Update score
+            document.getElementById('score').textContent = gameState.score;
+        }
+        
+        async function restartGame() {
+            try {
+                const response = await fetch('/snake/restart', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                gameState = await response.json();
+                document.getElementById('status').textContent = '';
+                pendingDirection = null;
+                
+                // Clear any existing interval
+                if (gameInterval) {
+                    clearInterval(gameInterval);
+                }
+                
+                // Start game loop
+                gameInterval = setInterval(gameLoop, 150);
+                drawGame();
+            } catch (error) {
+                console.error('Error restarting game:', error);
+            }
+        }
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!gameState || gameState.gameOver) return;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    e.preventDefault();
+                    changeDirection('up');
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    e.preventDefault();
+                    changeDirection('down');
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    e.preventDefault();
+                    changeDirection('left');
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    e.preventDefault();
+                    changeDirection('right');
+                    break;
+            }
+        });
+        
+        // Draw initial empty board
+        drawGame();
+    </script>
 </body>
 </html>
